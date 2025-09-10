@@ -1,0 +1,395 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Rescue Routing — Emoji markers (larger)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    /* --- Page / Map --- */
+    html, body { height:100%; margin:0; font-family: "Roboto", "Helvetica Neue", Arial, sans-serif; }
+    #map { position:absolute; inset:0; }
+
+    /* --- Top search bar --- */
+    .topbar {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(920px, calc(100% - 48px));
+      display: flex;
+      gap: 12px;
+      z-index: 1200;
+      pointer-events: auto;
+    }
+    .search-card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+      display:flex;
+      align-items:center;
+      padding:10px 12px;
+      width: 100%;
+    }
+    .search-card input {
+      border:0;
+      outline:none;
+      font-size:15px;
+      flex:1;
+      padding:6px 8px;
+    }
+    .search-card .btn-search {
+      background:#1a73e8;
+      color:white;
+      padding:8px 12px;
+      border-radius:6px;
+      border: none;
+      cursor: pointer;
+      font-weight:600;
+      margin-left:8px;
+    }
+
+    /* --- Floating left controls --- */
+    .left-controls {
+      position: absolute;
+      left: 14px;
+      top: 110px;
+      z-index: 1200;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      pointer-events: auto;
+    }
+    .control-btn {
+      width:56px;
+      height:56px;
+      background:#fff;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      border:none;
+      cursor:pointer;
+      font-size:20px;
+    }
+    .control-btn.small { width:44px; height:44px; font-size:16px; }
+
+    /* --- Right top mini panel --- */
+    .stage-chip {
+      position:absolute;
+      top:16px;
+      right:16px;
+      z-index:1200;
+      background: rgba(255,255,255,0.95);
+      padding:8px 12px;
+      border-radius:20px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      font-weight:600;
+    }
+
+    /* --- Bottom directions/info card --- */
+    .info-card {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 20px;
+      width: min(920px, calc(100% - 48px));
+      z-index: 1200;
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.16);
+      display:flex;
+      gap:16px;
+      align-items:center;
+    }
+    .info-left { flex:1; }
+    .info-right { width:260px; text-align:right; font-weight:600; }
+    .info-small { color:#666; font-size:13px; margin-top:6px; }
+
+    .badge {
+      display:inline-block;
+      background:#eef6ff;
+      color:#1a73e8;
+      padding:6px 8px;
+      border-radius:8px;
+      font-weight:700;
+      margin-right:8px;
+      font-size:13px;
+    }
+
+    /* --- Emoji marker styles injected into divIcons --- */
+    .emoji-marker {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:56px;
+      height:56px;
+      border-radius:28px;
+      background: white;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+      border: 2px solid rgba(0,0,0,0.06);
+      font-size:28px;
+      line-height:1;
+    }
+    .emoji-marker.small { width:46px; height:46px; border-radius:23px; font-size:22px; }
+
+    /* caret (triangle under the circle) */
+    .emoji-marker::after{
+      content: "";
+      position: absolute;
+      margin-top:34px;
+      width:0;
+      height:0;
+      border-left:8px solid transparent;
+      border-right:8px solid transparent;
+      border-top:10px solid rgba(0,0,0,0.08);
+      transform: translateY(18px);
+    }
+
+    @media (max-width:700px){
+      .topbar { left:12px; transform:none; width:calc(100% - 24px); }
+      .info-card { left:12px; transform:none; width:calc(100% - 24px); right:12px; }
+      .left-controls{ top:160px; left:8px; }
+      .control-btn { width:48px; height:48px; font-size:18px; }
+      .emoji-marker { width:48px; height:48px; font-size:24px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top search bar -->
+  <div class="topbar">
+    <div class="search-card">
+      <svg style="margin-right:8px" width="18" height="18" viewBox="0 0 24 24"><path fill="#666" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zM4 9.5C4 6.46 6.46 4 9.5 4S15 6.46 15 9.5 12.54 15 9.5 15 4 12.54 4 9.5z"/></svg>
+      <input id="fakeSearch" placeholder="Search place or address (mock) — use map to place Rescue / Patient" />
+      <button class="btn-search" id="btnFindHospTop">Find Nearby Hospitals</button>
+    </div>
+  </div>
+
+  <!-- left-floating controls -->
+  <div class="left-controls">
+    <button class="control-btn" id="btnLocateMe" title="Locate Me (Rescue Team)">📍</button>
+    <button class="control-btn" id="btnSetAmb" title="Set Rescue Team">🚑</button>
+    <button class="control-btn" id="btnSetPatient" title="Set Patient">🧍</button>
+    <button class="control-btn" id="btnAddHospital" title="Add Hospital">🏥</button>
+    <button class="control-btn" id="btnCompute" title="Compute Route">➡️</button>
+    <button class="control-btn small" id="btnClear" title="Clear">✖</button>
+  </div>
+
+  <!-- top-right tiny stage label -->
+  <div class="stage-chip" id="stageChip">Idle</div>
+
+  <!-- map -->
+  <div id="map"></div>
+
+  <!-- bottom info card -->
+  <div class="info-card" id="infoCard" style="display:none;">
+    <div class="info-left">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="badge" id="etaBadge">ETA</div>
+        <div>
+          <div id="legSummary" style="font-size:16px; font-weight:700">No route yet</div>
+          <div class="info-small" id="legSub">Set Rescue Team, Patient and Hospitals → then Compute Route</div>
+        </div>
+      </div>
+    </div>
+    <div class="info-right">
+      <div id="totalTime" style="font-size:20px">—</div>
+      <div class="info-small" id="totalDist">—</div>
+    </div>
+  </div>
+
+<script>
+/* ---------------------------
+   Map + UI logic (emoji markers)
+   - Rescue Team replaces Ambulance visually
+   - Backend endpoints unchanged (/route, /nearby_hospitals)
+   --------------------------- */
+
+let map = L.map('map', { zoomControl:false }).setView([28.7041,77.1025], 13);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+
+// UI elements
+const stageChip = document.getElementById('stageChip');
+const infoCard = document.getElementById('infoCard');
+const legSummary = document.getElementById('legSummary');
+const legSub = document.getElementById('legSub');
+const totalTime = document.getElementById('totalTime');
+const totalDist = document.getElementById('totalDist');
+
+let mode = null;
+let rescueMarker = null;
+let patientMarker = null;
+let hospitalMarkers = [];
+let hospitalCoords = []; // [lat,lng,name]
+let leg1Layer = null;
+let leg2Layer = null;
+
+/* create divIcon with emoji */
+function emojiIcon(emoji, size='large'){
+  const cls = size === 'small' ? 'emoji-marker small' : 'emoji-marker';
+  return L.divIcon({
+    className: '', // keep empty so our HTML controls the bubble
+    html: `<div class="${cls}">${emoji}</div>`,
+    iconSize: size === 'small' ? [46,46] : [56,56],
+    iconAnchor: size === 'small' ? [23,46] : [28,56],
+    popupAnchor: [0, -56]
+  });
+}
+
+/* ---------- UI button wiring ---------- */
+document.getElementById('btnSetAmb').onclick = ()=>{ mode='rescue'; stageChip.innerText='Click map to place Rescue Team'; };
+document.getElementById('btnSetPatient').onclick = ()=>{ mode='pat'; stageChip.innerText='Click map to place Patient'; };
+document.getElementById('btnAddHospital').onclick = ()=>{ mode='hosp'; stageChip.innerText='Click map to add Hospital'; };
+document.getElementById('btnClear').onclick = ()=>{ clearAll(); stageChip.innerText='Idle'; };
+document.getElementById('btnCompute').onclick = ()=>{ computeRoute(); stageChip.innerText='Computing route...'; };
+document.getElementById('btnLocateMe').onclick = ()=>{ locateMe(); };
+document.getElementById('btnFindHospTop').onclick = ()=>{ findNearbyHospitals(); };
+document.getElementById('btnFindHospTop').addEventListener('touchend', ()=>findNearbyHospitals());
+
+map.on('click', function(e){
+  if(mode === 'rescue'){
+    if(rescueMarker) map.removeLayer(rescueMarker);
+    rescueMarker = L.marker(e.latlng, {icon: emojiIcon('🚑')}).addTo(map).bindPopup('🚑 Rescue Team').openPopup();
+    stageChip.innerText='Rescue Team set';
+    mode=null;
+  } else if(mode === 'pat'){
+    if(patientMarker) map.removeLayer(patientMarker);
+    patientMarker = L.marker(e.latlng, {icon: emojiIcon('🧍')}).addTo(map).bindPopup('🧍 Patient').openPopup();
+    stageChip.innerText='Patient set';
+    mode=null;
+  } else if(mode === 'hosp'){
+    const m = L.marker(e.latlng, {icon: emojiIcon('🏥')}).addTo(map).bindPopup('🏥 Hospital');
+    hospitalMarkers.push(m);
+    hospitalCoords.push([e.latlng.lat, e.latlng.lng, "Manual Hospital"]);
+    stageChip.innerText=`Hospital added (${hospitalCoords.length})`;
+    mode=null;
+  }
+});
+
+/* locate user and put Rescue Team marker */
+function locateMe(){
+  stageChip.innerText='Requesting location...';
+  if (!navigator.geolocation) { alert('Geolocation not supported'); stageChip.innerText='Idle'; return; }
+  navigator.geolocation.getCurrentPosition((pos)=>{
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    if(rescueMarker) map.removeLayer(rescueMarker);
+    rescueMarker = L.marker([lat,lng], {icon: emojiIcon('🚑')}).addTo(map).bindPopup('🚑 Rescue Team (You)').openPopup();
+    map.setView([lat,lng], 15);
+    stageChip.innerText='Rescue Team located';
+  }, (err)=>{ alert('Location error: '+err.message); stageChip.innerText='Idle'; }, {enableHighAccuracy:true, timeout:10000});
+}
+
+/* Overpass nearby hospitals */
+async function findNearbyHospitals(radius=2000){
+  let lat,lng;
+  if(rescueMarker){ lat = rescueMarker.getLatLng().lat; lng = rescueMarker.getLatLng().lng; }
+  else { const c = map.getCenter(); lat=c.lat; lng=c.lng; }
+  stageChip.innerText='Searching hospitals...';
+  try {
+    const resp = await fetch('/nearby_hospitals', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({lat:lat,lng:lng,radius:radius})
+    });
+    const data = await resp.json();
+    if(data.error){ stageChip.innerText='Error finding hospitals'; alert(data.error); return; }
+    hospitalMarkers.forEach(m=>map.removeLayer(m));
+    hospitalMarkers = []; hospitalCoords = [];
+    if(!data.hospitals || data.hospitals.length===0){ stageChip.innerText='No hospitals found'; return; }
+    for(const h of data.hospitals){
+      const m = L.marker([h.lat,h.lng], {icon: emojiIcon('🏥', 'small')}).addTo(map).bindPopup(`🏥 ${h.name}`);
+      hospitalMarkers.push(m);
+      hospitalCoords.push([h.lat,h.lng,h.name||'Hospital']);
+      const c = L.circle([h.lat,h.lng], {radius:60, color:'#ff4d4f', weight:2, opacity:0.9}).addTo(map);
+      setTimeout(()=>map.removeLayer(c), 2000);
+    }
+    stageChip.innerText=`Found ${data.hospitals.length} hospitals`;
+    const group = new L.featureGroup(hospitalMarkers.concat(rescueMarker ? [rescueMarker] : []));
+    if(group.getLayers().length) map.fitBounds(group.getBounds().pad(0.15));
+  } catch(err){
+    console.error(err); stageChip.innerText='Nearby search failed'; alert('Nearby hospital search failed: '+err);
+  }
+}
+
+/* decode polyline (OSRM) */
+function decodePolyline(str){
+  let index=0, lat=0, lng=0, coordinates=[];
+  while(index<str.length){
+    let b, shift=0, result=0;
+    do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift+=5; } while(b >= 0x20);
+    let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1)); lat += dlat;
+    shift=0; result=0;
+    do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift+=5; } while(b>=0x20);
+    let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1)); lng += dlng;
+    coordinates.push([lat/1e5, lng/1e5]);
+  }
+  return coordinates;
+}
+
+/* compute route (calls backend /route) */
+async function computeRoute(){
+  if(!rescueMarker || !patientMarker || hospitalCoords.length===0){ alert('Set Rescue Team, patient and hospitals first'); stageChip.innerText='Idle'; return; }
+  stageChip.innerText='Computing route...';
+  const payload = {
+    ambulance: [rescueMarker.getLatLng().lat, rescueMarker.getLatLng().lng], // backend expects 'ambulance'
+    patient: [patientMarker.getLatLng().lat, patientMarker.getLatLng().lng],
+    hospitals: hospitalCoords,
+    choose_best_hospital: true
+  };
+  try {
+    const r = await fetch('/route', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    const data = await r.json();
+    if(data.error){ alert('Routing error: '+data.error); stageChip.innerText='Error'; return; }
+    drawRoute(data);
+    stageChip.innerText='Route computed';
+  } catch(err){
+    alert('Route request failed: '+err); stageChip.innerText='Error';
+  }
+}
+
+/* draw route on map and update info card */
+function drawRoute(data){
+  if(leg1Layer) map.removeLayer(leg1Layer);
+  if(leg2Layer) map.removeLayer(leg2Layer);
+  const leg1 = decodePolyline(data.leg1.geometry).map(c=>[c[0],c[1]]);
+  const leg2 = decodePolyline(data.leg2.geometry).map(c=>[c[0],c[1]]);
+  leg1Layer = L.polyline(leg1, {color:'#1a73e8', weight:5, opacity:0.9}).addTo(map);
+  leg2Layer = L.polyline(leg2, {color:'#ff7043', weight:5, opacity:0.9}).addTo(map);
+  // update bottom card
+  const toKm = m => (m/1000).toFixed(2)+' km';
+  const toMin = s => Math.round(s/60)+' min';
+  legSummary.innerText = `Rescue → Patient: ${toKm(data.leg1.distance_m)}, ${toMin(data.leg1.duration_s)}  •  Patient → Hospital: ${toKm(data.leg2.distance_m)}, ${toMin(data.leg2.duration_s)}`;
+  legSub.innerText = `Selected hospital index: ${data.selected_hospital_index}  •  Matches: ${data.all_hospital_results.length}`;
+  totalTime.innerText = toMin(data.total.duration_s);
+  totalDist.innerText = toKm(data.total.distance_m);
+  infoCard.style.display = 'flex';
+  const group = new L.featureGroup([rescueMarker, patientMarker].concat(hospitalMarkers));
+  if(group.getLayers().length) map.fitBounds(group.getBounds().pad(0.15));
+}
+
+/* clear UI & layers */
+function clearAll(){
+  if(rescueMarker) map.removeLayer(rescueMarker);
+  if(patientMarker) map.removeLayer(patientMarker);
+  hospitalMarkers.forEach(m=>map.removeLayer(m));
+  hospitalMarkers = []; hospitalCoords = [];
+  if(leg1Layer) map.removeLayer(leg1Layer);
+  if(leg2Layer) map.removeLayer(leg2Layer);
+  leg1Layer = leg2Layer = null;
+  infoCard.style.display='none';
+  legSummary.innerText = 'No route yet';
+  totalTime.innerText = '—';
+  totalDist.innerText = '—';
+}
+
+/* Enter on search is mock */
+document.getElementById('fakeSearch').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){ e.preventDefault(); alert('This search bar is mock for the demo — use map or Find Nearby Hospitals'); }
+});
+</script>
+</body>
+</html>
