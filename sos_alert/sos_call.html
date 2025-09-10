@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>SOS — Quick Alert</title>
+    <style>
+        :root {
+            --bg: #0f1724;
+            --card: #0b1220;
+            --accent: #e11d1d;
+            --accent-dark: #9b1212;
+            --muted: #9ca3af;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            background: linear-gradient(180deg, #071028 0%, #0b1220 100%);
+            display: grid;
+            place-items: center;
+            color: #fff;
+            padding: 36px;
+            box-sizing: border-box;
+        }
+
+        h1.site-title {
+            font-size: 48px;
+            margin: 0;
+            font-style: italic;
+            letter-spacing: 1px;
+            color: #fff;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        h2.site-sub {
+            margin: 8px 0 36px 0;
+            text-align: center;
+            color: #dbeafe;
+            font-weight: 700;
+        }
+
+        main.card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 18px;
+            padding: 36px 28px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(2, 6, 23, 0.7);
+            max-width: 720px;
+            width: 95%;
+        }
+
+        main.card h1 {
+            margin: 0 0 8px;
+            font-size: 22px;
+            letter-spacing: 0.4px;
+        }
+
+        p.lead {
+            margin: 0 0 22px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        /* SOS button (circular) */
+        .sos-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 18px 0 8px;
+        }
+
+        .btn-sos {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: linear-gradient(180deg, var(--accent), var(--accent-dark));
+            border: none;
+            cursor: pointer;
+            position: relative;
+            display: inline-grid;
+            place-items: center;
+            box-shadow: 0 10px 40px rgba(225, 29, 29, 0.25), 0 2px 6px rgba(0, 0, 0, 0.6);
+            overflow: visible;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn-sos:focus {
+            outline: none;
+            box-shadow: 0 10px 40px rgba(225, 29, 29, 0.35), 0 2px 6px rgba(0, 0, 0, 0.6);
+        }
+
+        /* soft pulse behind button to draw attention */
+        .btn-sos::before {
+            content: "";
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, rgba(225, 29, 29, 0.12), transparent 40%);
+            filter: blur(8px);
+            animation: pulse 2s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.98);
+                opacity: 0.9;
+            }
+
+            50% {
+                transform: scale(1.04);
+                opacity: 0.7;
+            }
+
+            100% {
+                transform: scale(0.98);
+                opacity: 0.9;
+            }
+        }
+
+        .btn-sos .center-label {
+            z-index: 3;
+            font-weight: 800;
+            font-size: 36px;
+            color: white;
+            letter-spacing: 1px;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        /* SVG overlay for progress ring */
+        .sos-svg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            top: 0;
+            left: 0;
+            transform: rotate(-90deg);
+            /* rotate so progress starts at top */
+            pointer-events: none;
+        }
+
+        /* small helper text */
+        .helper {
+            margin-top: 16px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        /* toast */
+        .toast {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            top: 90px;
+            background: linear-gradient(90deg, #0b1220, #071028);
+            padding: 20px 26px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(2, 6, 23, 0.6);
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s, transform .25s;
+            font-size: 16px;
+            color: #fff;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+
+        .toast .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 10px rgba(225, 29, 29, 0.6)
+        }
+
+        .toast .msg {
+            font-size: 16px;
+            font-weight: 500
+        }
+
+        /* modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 40;
+        }
+
+        .modal-backdrop.show {
+            display: flex;
+        }
+
+        .modal {
+            background: #fff;
+            color: #061025;
+            border-radius: 12px;
+            padding: 24px;
+            /* balanced padding on all sides */
+            min-width: 320px;
+            max-width: 480px;
+            /* reduced width for balance */
+            width: 90%;
+            /* responsive: keeps equal margins left/right */
+            margin: 0 auto;
+            /* centers modal properly */
+            box-sizing: border-box;
+            /* ensures padding doesn’t push content unevenly */
+            box-shadow: 0 18px 50px rgba(2, 6, 23, 0.65);
+        }
+
+
+        .modal h2 {
+            margin: 0 0 6px;
+            font-size: 18px
+        }
+
+        .modal p {
+            margin: 0 0 14px;
+            color: #334155
+        }
+
+        .modal .actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end
+        }
+
+        .modal textarea {
+            width: 90%;
+            max-width: 450px;
+            min-width: 320px;
+            display: block;
+            margin: 8px auto;
+            resize: none;              /* make non-resizable */
+            height: 100px;             /* fixed height */
+        }
+
+        .btn {
+            background: #0b1220;
+            color: #fff;
+            border: 0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer
+        }
+
+        .btn.secondary {
+            background: #eef2ff;
+            color: #111
+        }
+
+        .modal input[type="text"],
+        .modal select,
+        .modal textarea {
+            width: 100%;
+            padding: 10px 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-size: 14px;
+            box-sizing: border-box;
+            /* ensures equal spacing inside */
+        }
+
+        /* call action (hidden by default) */
+        .call-action {
+            display: none;
+            width: 90%;
+            max-width: 450px;
+            min-width: 320px;
+            margin: 8px auto;
+            text-align: center;
+        }
+
+        .call-action a.call-button {
+            display: inline-block;
+            text-decoration: none;
+            background: #0b1220;
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+        }
+
+        .small {
+            font-size: 13px;
+            color: #6b7280
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        .muted {
+            color: #64748b;
+            font-size: 13px
+        }
+
+        /* map container */
+        #map {
+            width: 100%;
+            height: 360px;
+            border-radius: 8px;
+            margin: 8px 0
+        }
+
+        #pac-input {
+            margin-top: 8px;
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-size: 14px
+        }
+
+        @media (max-width:420px) {
+            .btn-sos {
+                width: 140px;
+                height: 140px;
+            }
+
+            .btn-sos .center-label {
+                font-size: 28px;
+            }
+
+            h1.site-title {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header style="text-align:center;margin-bottom:14px;">
+        <h1 class="site-title">Suraksha AI - SIMHASTA 2028</h1>
+        <h2 class="site-sub">Pilgrim Safety First</h2>
+    </header>
+
+    <main class="card" role="main">
+        <h1>Emergency SOS</h1>
+        <p class="lead">Press and hold the SOS button to notify the response team. Then click <strong>Enter
+                Location</strong>
+            to fetch your mobile GPS coordinates. If they're not precise, you can pick the exact spot on the map.</p>
+
+        <div class="sos-wrap" aria-hidden="false">
+            <button class="btn-sos" id="sosBtn" aria-label="Send SOS (hold for 2 seconds)">
+                <!-- SVG ring for progress visualization -->
+                <svg class="sos-svg" viewBox="0 0 200 200" role="img" aria-hidden="true">
+                    <!-- background ring -->
+                    <circle cx="100" cy="100" r="72" stroke="rgba(255,255,255,0.08)" stroke-width="14" fill="none">
+                    </circle>
+                    <!-- progress ring (stroke animated by JS) -->
+                    <circle id="progressRing" cx="100" cy="100" r="72" stroke="white" stroke-width="10" fill="none"
+                        stroke-linecap="round" stroke-dasharray="452" stroke-dashoffset="452" opacity="0.95"></circle>
+                </svg>
+
+                <div class="center-label" id="sosLabel">SOS</div>
+            </button>
+        </div>
+
+        <div class="helper">Tip: For best accuracy, move outdoors, enable Wi-Fi, disable battery saver, and allow
+            location permissions.</div>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite">
+        <div class="dot" aria-hidden></div>
+        <div class="msg">Notification sent to the response team.</div>
+    </div>
+
+    <!-- main modal -->
+    <div id="modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal" role="document">
+            <h2>Confirm Location</h2>
+            <p id="locationStatus">Press <strong>Enter Location</strong> to fetch your device location.</p>
+            <label class="small" for="locationInput">Location (lat, lng)</label>
+            <input type="text" id="locationInput" readonly />
+            <div class="row" style="margin-bottom:10px;">
+                <button class="btn secondary" id="enterLocBtn">Enter Location</button>
+                <button class="btn secondary" id="manualBtn">Select exact location on map</button>
+            </div>
+            <label class="small" for="emergencyType">What type of emergency?</label>
+            <select id="emergencyType">
+                <option value="" disabled selected>Select emergency</option>
+                <option value="medical">Medical</option>
+                <option value="fire">Fire</option>
+                <option value="crime">Crime / Threat</option>
+                <option value="accident">Accident / Vehicle</option>
+                <option value="call">Call the team</option>
+                <option value="other">Other</option>
+            </select>
+
+            <label class="small" for="otherDetail" id="otherLabel" style="display:none">Please describe</label>
+            <textarea id="otherDetail" rows="3" style="display:none"></textarea>
+
+            <!-- call action (shown only when 'call' chosen) -->
+            <div class="call-action" id="callAction">
+                <!-- replace number below with real team number -->
+                <a id="callLink" class="call-button" href="tel:+911234567890">Call Response Team</a>
+            </div>
+
+            <div class="actions" style="margin-top:12px;">
+                <button class="btn secondary" id="modalCancel">Cancel</button>
+                <button class="btn" id="useBest">Send Alert</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- map modal -->
+    <div id="mapModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal" role="document">
+            <h2>Select exact location on map</h2>
+            <input id="pac-input" class="controls" type="text" placeholder="Search location" />
+            <div id="map"></div>
+            <div class="actions">
+                <button class="btn secondary" id="mapCancel">Cancel</button>
+                <button class="btn" id="mapUse">Use this location</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // put your real response team number here (E.164 format recommended)
+        const RESPONSE_TEAM_NUMBER = '+911234567890';
+
+        const sosBtn = document.getElementById('sosBtn');
+        const progressRing = document.getElementById('progressRing');
+        const toast = document.getElementById('toast');
+        const modalBackdrop = document.getElementById('modal');
+        const modalCancel = document.getElementById('modalCancel');
+        const enterLocBtn = document.getElementById('enterLocBtn');
+        const manualBtn = document.getElementById('manualBtn');
+        const locationInput = document.getElementById('locationInput');
+        const locationStatus = document.getElementById('locationStatus');
+        const emergencyType = document.getElementById('emergencyType');
+        const otherDetail = document.getElementById('otherDetail');
+        const otherLabel = document.getElementById('otherLabel');
+        const callAction = document.getElementById('callAction');
+        const callLink = document.getElementById('callLink');
+        const useBest = document.getElementById('useBest');
+
+        const mapModal = document.getElementById('mapModal');
+        const mapCancel = document.getElementById('mapCancel');
+        const mapUse = document.getElementById('mapUse');
+        const pacInput = document.getElementById('pac-input');
+
+        // location & map
+        let bestSample = null;
+        let map, marker, searchBox;
+        let mapInitialized = false;
+
+        function showToast(msg) {
+            if (msg) toast.querySelector('.msg').textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3500);
+        }
+
+        async function sendNotification() {
+            showToast('Preparing alert...');
+            // small delay so toast visible before modal pops
+            await new Promise(r => setTimeout(r, 250));
+            openMainModal();
+        }
+
+        function openMainModal() {
+            modalBackdrop.classList.add('show');
+            modalBackdrop.setAttribute('aria-hidden', 'false');
+            locationInput.value = '';
+            locationStatus.textContent = 'Press Enter Location to fetch your device location.';
+            // reset emergency controls
+            emergencyType.value = '';
+            otherDetail.style.display = 'none';
+            otherLabel.style.display = 'none';
+            callAction.style.display = 'none';
+        }
+
+        function closeMainModal() {
+            modalBackdrop.classList.remove('show');
+            modalBackdrop.setAttribute('aria-hidden', 'true');
+        }
+
+        enterLocBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                locationStatus.textContent = 'Geolocation not supported.';
+                return;
+            }
+            locationStatus.textContent = 'Requesting location…';
+            enterLocBtn.disabled = true;
+            navigator.geolocation.getCurrentPosition((pos) => {
+                const { latitude, longitude, accuracy } = pos.coords;
+                bestSample = { lat: latitude, lng: longitude, accuracy, t: Date.now() };
+                locationInput.value = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+                locationStatus.textContent = `Detected (~${Math.round(accuracy)} m accuracy). Use map to refine if needed.`;
+                enterLocBtn.disabled = false;
+            }, (err) => {
+                locationStatus.textContent = 'Unable to retrieve location: ' + err.message;
+                enterLocBtn.disabled = false;
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 10000
+            });
+        });
+
+        function openMapModal() {
+            if (!window.google || !google.maps) {
+                alert('Google Maps API not loaded.');
+                return;
+            }
+            mapModal.classList.add('show');
+            mapModal.setAttribute('aria-hidden', 'false');
+            setTimeout(() => {
+                const center = bestSample ? {
+                    lat: bestSample.lat,
+                    lng: bestSample.lng
+                } : {
+                    lat: 0,
+                    lng: 0
+                };
+                if (!mapInitialized) {
+                    map = new google.maps.Map(document.getElementById('map'), {
+                        center,
+                        zoom: 15,
+                        streetViewControl: false
+                    });
+                    marker = new google.maps.Marker({
+                        position: center,
+                        map,
+                        draggable: true
+                    });
+                    map.addListener('click', (e) => {
+                        marker.setPosition(e.latLng);
+                    });
+                    searchBox = new google.maps.places.SearchBox(pacInput);
+                    map.addListener('bounds_changed', () => {
+                        searchBox.setBounds(map.getBounds());
+                    });
+                    searchBox.addListener('places_changed', () => {
+                        const places = searchBox.getPlaces();
+                        if (places.length == 0) return;
+                        const place = places[0];
+                        if (!place.geometry) return;
+                        map.setCenter(place.geometry.location);
+                        marker.setPosition(place.geometry.location);
+                    });
+                    mapInitialized = true;
+                } else {
+                    map.setCenter(center);
+                    marker.setPosition(center);
+                }
+                google.maps.event.trigger(map, 'resize');
+            }, 200);
+        }
+
+        function closeMapModal() {
+            mapModal.classList.remove('show');
+            mapModal.setAttribute('aria-hidden', 'true');
+        }
+
+        function useMapLocation() {
+            if (!marker) {
+                showToast('No marker');
+                return;
+            }
+            const p = marker.getPosition();
+            bestSample = {
+                lat: p.lat(),
+                lng: p.lng(),
+                accuracy: 5,
+                t: Date.now()
+            };
+            locationInput.value = `${bestSample.lat.toFixed(6)}, ${bestSample.lng.toFixed(6)}`;
+            closeMapModal();
+            locationStatus.textContent = 'Manual location selected.';
+        }
+
+        manualBtn.addEventListener('click', () => {
+            openMapModal();
+        });
+
+        mapUse.addEventListener('click', useMapLocation);
+        mapCancel.addEventListener('click', closeMapModal);
+
+        // Modal actions for final sending
+        useBest.addEventListener('click', () => {
+            const type = emergencyType.value;
+            const otherText = otherDetail.value.trim();
+
+            if (!bestSample) {
+                showToast('No location available — press Enter Location or select manually.');
+                return;
+            }
+            if (!type) {
+                showToast('Please select the type of emergency.');
+                return;
+            }
+
+            // If call option chosen — open dialer with number prefilled
+            if (type === 'call') {
+                showToast('Opening dialer...');
+                // Close modal so dialer is visible on mobile
+                closeMainModal();
+                // open dialer with number prefilled
+                window.location.href = `tel:${RESPONSE_TEAM_NUMBER}`;
+                return;
+            }
+
+            const payload = {
+                lat: bestSample.lat,
+                lng: bestSample.lng,
+                accuracy_m: Math.round(bestSample.accuracy),
+                type,
+                note: type === 'other' ? otherText : '',
+                timestamp: new Date().toISOString()
+            };
+            console.log('SENT PAYLOAD', payload);
+            showToast('Alert sent — response team notified.');
+            closeMainModal();
+        });
+
+        // Toggle textarea/call button based on emergencyType
+        emergencyType.addEventListener('change', () => {
+            const v = emergencyType.value;
+            if (v === 'other') {
+                otherDetail.style.display = '';
+                otherLabel.style.display = '';
+                callAction.style.display = 'none';
+            } else if (v === 'call') {
+                otherDetail.style.display = 'none';
+                otherLabel.style.display = 'none';
+                // set callLink HREF so dialer prefilled number is correct
+                callLink.setAttribute('href', `tel:${RESPONSE_TEAM_NUMBER}`);
+                callAction.style.display = 'block';
+            } else {
+                otherDetail.style.display = 'none';
+                otherLabel.style.display = 'none';
+                callAction.style.display = 'none';
+            }
+        });
+
+        // Call button click opens dialer with prefilled number
+        callLink.addEventListener('click', (e) => {
+            // let the anchor do its thing, but for clarity we can set the href again
+            callLink.setAttribute('href', `tel:${RESPONSE_TEAM_NUMBER}`);
+            // On some mobile browsers the href will suffice. No further JS required.
+        });
+
+        modalCancel.addEventListener('click', closeMainModal);
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (mapModal.classList.contains('show')) closeMapModal();
+                else if (modalBackdrop.classList.contains('show')) closeMainModal();
+            }
+        });
+
+        /**************************************
+         * Hold-to-activate logic with ring
+         **************************************/
+        // Progress ring constants
+        const R = 72; // radius used in svg circle
+        const CIRC = 2 * Math.PI * R; // circumference
+        progressRing.setAttribute('stroke-dasharray', String(CIRC));
+        progressRing.setAttribute('stroke-dashoffset', String(CIRC));
+
+        let holdStart = 0;
+        let holdRequest = null;
+        let holdDuration = 2000; // 2 seconds required hold
+        let holdActive = false;
+
+        function setProgress(progress) {
+            // progress: 0..1
+            const offset = CIRC * (1 - Math.max(0, Math.min(1, progress)));
+            progressRing.setAttribute('stroke-dashoffset', String(offset));
+            // optional: adjust ring opacity slightly with progress
+            progressRing.style.opacity = 0.9;
+        }
+
+        function resetProgress() {
+            progressRing.setAttribute('stroke-dashoffset', String(CIRC));
+            progressRing.style.opacity = 0.95;
+        }
+
+        async function completedHold() {
+            // called when hold completes
+            holdActive = false;
+            resetProgress();
+            await sendNotification();
+        }
+
+        function stepProgress() {
+            if (!holdActive) return;
+            const now = performance.now();
+            const elapsed = now - holdStart;
+            const p = Math.min(1, elapsed / holdDuration);
+            setProgress(p);
+            if (elapsed >= holdDuration) {
+                // done
+                cancelHold();
+                completedHold();
+                return;
+            }
+            holdRequest = requestAnimationFrame(stepProgress);
+        }
+
+        function startHold() {
+            if (holdActive) return;
+            holdActive = true;
+            holdStart = performance.now();
+            // ensure ring visible immediately
+            setProgress(0.01);
+            holdRequest = requestAnimationFrame(stepProgress);
+        }
+
+        function cancelHold() {
+            if (!holdActive) {
+                resetProgress();
+                return;
+            }
+            holdActive = false;
+            if (holdRequest) {
+                cancelAnimationFrame(holdRequest);
+                holdRequest = null;
+            }
+            // animate reset quickly
+            progressRing.style.transition = 'stroke-dashoffset 180ms ease-out';
+            progressRing.setAttribute('stroke-dashoffset', String(CIRC));
+            // clear transition after it finishes
+            setTimeout(() => {
+                progressRing.style.transition = '';
+                progressRing.style.opacity = 0.95;
+            }, 200);
+        }
+
+        // Desktop mouse events
+        sosBtn.addEventListener('mousedown', (e) => {
+            // prevent selecting
+            e.preventDefault();
+            startHold();
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (holdActive) {
+                // user released early, cancel
+                cancelHold();
+            }
+        });
+
+        // cancel if mouse leaves button (optional)
+        sosBtn.addEventListener('mouseleave', (e) => {
+            if (holdActive && (e.buttons === 0)) {
+                cancelHold();
+            }
+        });
+
+        // Touch events for mobile
+        sosBtn.addEventListener('touchstart', (e) => {
+            // prevent default to avoid simulated mouse events
+            e.preventDefault();
+            startHold();
+        }, {
+            passive: false
+        });
+
+        sosBtn.addEventListener('touchend', (e) => {
+            if (holdActive) {
+                cancelHold();
+            }
+        });
+
+        sosBtn.addEventListener('touchcancel', (e) => {
+            if (holdActive) {
+                cancelHold();
+            }
+        });
+
+        // Also allow keyboard activation: hold Space or Enter
+        sosBtn.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                startHold();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if ((e.key === ' ' || e.key === 'Enter') && holdActive) {
+                // key released
+                cancelHold();
+            }
+        });
+    </script>
+
+    <!-- Google Maps with Places library -->
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao&libraries=places"></script>
+</body>
+
+</html>
